@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:freedium_mobile/core/services/medium_service.dart';
-import 'package:freedium_mobile/features/favorites/application/favorite_authors_provider.dart';
 import 'package:freedium_mobile/features/favorites/domain/post.dart';
 import 'package:http/http.dart' as http;
 

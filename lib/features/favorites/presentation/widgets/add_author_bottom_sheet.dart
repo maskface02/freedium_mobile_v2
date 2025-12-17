@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:freedium_mobile/features/favorites/application/favorite_authors_provider.dart';
-import 'package:freedium_mobile/features/favorites/domain/author.dart';
 
 /// Bottom sheet for adding a new favorite author.
 class AddAuthorBottomSheet extends ConsumerStatefulWidget {
