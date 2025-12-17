@@ -109,6 +109,17 @@ class MediumService {
   }
 
   /// Parses posts from the HTML of an author's profile page.
+  /// 
+  /// Note: This uses regex-based HTML parsing which is fragile and may break
+  /// if Medium changes their HTML structure. The patterns are designed based on
+  /// Medium's current HTML structure as of late 2024.
+  /// 
+  /// Regex patterns explained:
+  /// - `anchorRegex`: Matches anchor tags where href contains a path ending with
+  ///   an 8-12 character hex ID (Medium article IDs), optionally followed by
+  ///   query parameters.
+  /// - `anchorWithTitleRegex`: Same as above but also captures the text content
+  ///   after the anchor tag opening, skipping any nested tags.
   List<Post> _parsePostsFromHtml(
     String html,
     String authorName,
@@ -116,14 +127,17 @@ class MediumService {
   ) {
     final posts = <Post>[];
 
-    // Find all anchor tags with href containing article-like paths
-    // Medium article URLs typically have a 12-character hex ID at the end
+    // Find all anchor tags with href containing article-like paths.
+    // Medium article URLs end with a hex ID like: article-title-abc123def456
+    // Pattern: <a ... href="[path]-[8-12 hex chars][optional query]" ...>
     final anchorRegex = RegExp(
       r'<a[^>]*href="([^"]*-[a-f0-9]{8,12}(?:\?[^"]*)?)"[^>]*>',
       caseSensitive: false,
     );
 
-    // Also extract title from h2/h3 tags near anchors or the anchor text itself
+    // Extract title from the text immediately following the anchor opening.
+    // Pattern: Same as above but also captures text after skipping nested tags.
+    // The (?:<[^>]*>)* skips inline tags like <span>, <strong>, etc.
     final anchorWithTitleRegex = RegExp(
       r'<a[^>]*href="([^"]*-[a-f0-9]{8,12}(?:\?[^"]*)?)"[^>]*>(?:<[^>]*>)*([^<]*)',
       caseSensitive: false,

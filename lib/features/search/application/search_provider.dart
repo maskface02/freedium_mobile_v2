@@ -110,18 +110,31 @@ class SearchNotifier extends Notifier<SearchState> {
   }
 
   /// Parses search results from Medium search page HTML.
+  /// 
+  /// Note: This uses regex-based HTML parsing which is fragile and may break
+  /// if Medium changes their HTML structure. The patterns are designed based on
+  /// Medium's current HTML structure as of late 2024.
+  /// 
+  /// Regex patterns explained:
+  /// - `articleRegex`: Matches anchor tags with href containing `/@author/` pattern
+  ///   followed by an article path ending with 8-12 character hex ID.
+  /// - `titleRegex`: Similar pattern but captures the text content after the anchor
+  ///   opening tag, skipping nested HTML tags.
   List<Post> _parseSearchResults(String html) {
     final posts = <Post>[];
     final seen = <String>{};
 
-    // Find article links with their surrounding context to extract author info
-    // Medium article URLs have a hex ID at the end
+    // Find article links with author info extracted from URL path.
+    // Medium URLs typically follow: /@author/article-title-abc123def456
+    // Pattern captures: full href, author name (from /@author/ segment)
     final articleRegex = RegExp(
       r'<a[^>]*href="([^"]*/@([^/]+)/[^"]*-[a-f0-9]{8,12}(?:\?[^"]*)?)"[^>]*>',
       caseSensitive: false,
     );
 
-    // Also try to extract titles
+    // Extract titles from anchor text content.
+    // Pattern: Same article matching but also captures text after skipping nested tags.
+    // The (?:<[^>]*>)* skips inline tags like <span>, <strong>, <h2>, etc.
     final titleRegex = RegExp(
       r'<a[^>]*href="([^"]*-[a-f0-9]{8,12}(?:\?[^"]*)?)"[^>]*>(?:<[^>]*>)*([^<]+)',
       caseSensitive: false,

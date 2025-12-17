@@ -144,6 +144,8 @@ class FeedState {
 
 /// Notifier for managing the home feed with mixed posts from favorite authors.
 class FeedNotifier extends Notifier<FeedState> {
+  static const int _maxRetries = 10;
+
   @override
   FeedState build() {
     _loadFeed();
@@ -153,37 +155,53 @@ class FeedNotifier extends Notifier<FeedState> {
   Future<void> _loadFeed() async {
     final favorites = ref.read(favoriteAuthorsProvider);
     
-    // Wait for favorites to load if still loading
+    // Wait for favorites to load if still loading (with retry limit)
     if (favorites.isLoading) {
-      await Future.delayed(const Duration(milliseconds: 100));
-      return _loadFeed();
+      await _waitForFavorites();
     }
 
-    if (favorites.authors.isEmpty) {
+    final currentFavorites = ref.read(favoriteAuthorsProvider);
+    if (currentFavorites.authors.isEmpty) {
       state = state.copyWith(isLoading: false, isEmpty: true, posts: []);
       return;
     }
 
     final mediumService = ref.read(mediumServiceProvider);
-    final allPosts = <List<Post>>[];
-
-    // Fetch posts for each favorite author
-    for (final author in favorites.authors) {
+    
+    // Fetch posts concurrently for all authors
+    final futures = currentFavorites.authors.map((author) async {
       try {
-        final posts = await mediumService.fetchAuthorPosts(
+        return await mediumService.fetchAuthorPosts(
           author.authorName,
           maxPosts: 5,
         );
-        if (posts.isNotEmpty) {
-          allPosts.add(posts);
-        }
       } catch (e) {
         debugPrint('Failed to fetch posts for ${author.authorName}: $e');
+        return <Post>[];
       }
-    }
+    }).toList();
+
+    final results = await Future.wait(futures);
+    final allPosts = results.where((posts) => posts.isNotEmpty).toList();
 
     // Mix posts round-robin style
     final mixedPosts = _mixPostsRoundRobin(allPosts);
+
+    state = state.copyWith(
+      posts: mixedPosts,
+      isLoading: false,
+      isEmpty: mixedPosts.isEmpty,
+    );
+  }
+
+  /// Waits for favorites to finish loading with a retry limit.
+  Future<void> _waitForFavorites() async {
+    int retries = 0;
+    while (ref.read(favoriteAuthorsProvider).isLoading && retries < _maxRetries) {
+      await Future.delayed(const Duration(milliseconds: 100));
+      retries++;
+    }
+  }
 
     state = state.copyWith(
       posts: mixedPosts,
