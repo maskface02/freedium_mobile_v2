@@ -203,13 +203,6 @@ class FeedNotifier extends Notifier<FeedState> {
     }
   }
 
-    state = state.copyWith(
-      posts: mixedPosts,
-      isLoading: false,
-      isEmpty: mixedPosts.isEmpty,
-    );
-  }
-
   /// Mixes posts from multiple authors in a round-robin fashion.
   List<Post> _mixPostsRoundRobin(List<List<Post>> postLists) {
     if (postLists.isEmpty) return [];
